@@ -23,6 +23,7 @@ mongoose.connect(process.env.MONGODB_URI)
 fastify.register(fastifyCors, {
     origin: ['https://vmeme.vercel.app', 'http://localhost:3000']
 })
+
 fastify.register(AuthRoute, { prefix: '/api/v1/auth' })
 fastify.register(ArtistsRoute, { prefix: '/api/v1/artist' })
 fastify.register(PaintingsRoute, { prefix: '/api/v1/paintings' })
@@ -34,8 +35,11 @@ fastify.register(PageRoute, { prefix: '/api/v1/page' })
 
 // Run the server!
 try {
+    setInterval(async () => {
+        const res = await fetch('https://vmeme.onrender.com')
+        console.log(res.ok)
+    }, 1000 * 60 * 3)
     await fastify.listen({ host, port })
-    console.log(`listening at port ${port}`)
 } catch (err) {
     fastify.log.error(err)
     process.exit(1)
