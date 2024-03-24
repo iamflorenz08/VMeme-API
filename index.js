@@ -11,6 +11,7 @@ import OrderRoute from './routers/OrderRoute.js';
 import UsersRoute from './routers/UsersRoute.js';
 import DashboardRoute from './routers/DashboardRoute.js';
 import PageRoute from './routers/PageRoute.js';
+
 const port = process.env.PORT || 5000;
 const host = ("RENDER" in process.env) ? `0.0.0.0` : `localhost`;
 
@@ -33,11 +34,11 @@ fastify.register(UsersRoute, { prefix: '/api/v1/user' })
 fastify.register(DashboardRoute, { prefix: '/api/v1/dashboard' })
 fastify.register(PageRoute, { prefix: '/api/v1/page' })
 
+
 // Run the server!
 try {
     setInterval(async () => {
-        const res = await fetch('https://vmeme.onrender.com')
-        console.log(res.ok)
+        await fetch('https://vmeme.onrender.com')
     }, 1000 * 60 * 3)
     await fastify.listen({ host, port })
 } catch (err) {

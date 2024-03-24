@@ -2,6 +2,35 @@ import CartModel from "../models/CartModel.js"
 import OrderModel from "../models/OrderModel.js"
 import OrderReferenceModel from "../models/OrderReferenceModel.js"
 import PaintingModel from "../models/PaintingModel.js"
+import { generatePDFReceipt } from "../utils/reports.js"
+import { transport } from "../utils/transport.js"
+
+const generateReceipt = (email, user) => {
+    const pdf = generatePDFReceipt(user)
+    pdf
+        .then(async (buffer) => {
+            const transporter = await transport()
+            await transporter.sendMail({
+                from: `"VMeme Contemporary Art Gallery" <${process.env.EMAIL}>`,
+                to: email,
+                subject: 'Receipt',
+                html: `
+            <h1>Your receipt</h1>
+            `,
+                attachments: {
+                    filename: `${user.orderId ?? user.referenceID}-receipt.pdf`,
+                    content: buffer,
+                    contentType: 'application/pdf'
+                }
+            })
+        })
+        .catch(err => {
+            return reply.status(400).send({
+                success: false,
+                message: err.message
+            })
+        })
+}
 
 export const addOrder = async (request, reply) => {
     try {
@@ -13,8 +42,9 @@ export const addOrder = async (request, reply) => {
             zipCode,
             referenceID,
         } = request.body
-        const cartItemsDB = await CartModel.find({ user }).select('painting -_id').populate({ path: 'painting' })
+        const cartItemsDB = await CartModel.find({ user }).select('painting -_id').populate({ path: 'painting user' })
         if (!cartItemsDB || cartItemsDB.length <= 0) throw new Error('No ordered paintings.')
+
 
         const paintingReferencesIDs = await cartItemsDB.map(item => item.painting._id)
         const paintingReferences = await cartItemsDB.map(item => item.painting)
@@ -23,7 +53,8 @@ export const addOrder = async (request, reply) => {
         const paintingReferencesDBIDs = await paintingReferencesDB.map(item => item._id)
 
         //add order
-        await new OrderModel({
+        const orderDB = await new OrderModel({
+            orderId: 'VM' + new Date().valueOf(),
             user,
             email,
             phoneNumber,
@@ -35,10 +66,17 @@ export const addOrder = async (request, reply) => {
 
 
         //make the items unavaible to users
-        const sam = await PaintingModel.updateMany({ _id: { $in: paintingReferencesIDs } }, { $set: { status: 'Sold' } })
+        await PaintingModel.updateMany({ _id: { $in: paintingReferencesIDs } }, { $set: { status: 'Sold' } })
 
         //delete items in cart
         await CartModel.deleteMany({ user })
+
+
+        generateReceipt(orderDB.email, {
+            ...orderDB._doc,
+            fullName: cartItemsDB[0].user.fullName,
+            orderedPaintings: cartItemsDB.map(item => item.painting)
+        })
 
         return reply.status(200).send({
             success: true,
@@ -46,6 +84,8 @@ export const addOrder = async (request, reply) => {
         })
 
     } catch (e) {
+
+        console.log(e.message)
         return reply.status(400).send({
             success: false,
             message: e.message

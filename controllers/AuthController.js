@@ -3,16 +3,7 @@ import UserModel from "../models/UserModel.js"
 import OTPModel from "../models/OTPModel.js"
 import bcrypt from 'bcrypt'
 import otpGenerator from "otp-generator"
-import { google } from "googleapis"
-import nodemailer from 'nodemailer'
-
-const oAuth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-);
-
-oAuth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN })
+import { transport } from "../utils/transport.js"
 
 export const signup = async (request, reply) => {
     const saltRound = 10
@@ -137,29 +128,14 @@ const generateOTP = async (email) => {
 
 const sendEmail = async (email, otp) => {
     try {
-        const { token } = await oAuth2Client.getAccessToken()
-        const transport = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                type: "OAuth2",
-                user: process.env.EMAIL,
-                clientId: process.env.GOOGLE_CLIENT_ID,
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-                accessToken: token
-            },
-            tls: {
-                rejectUnauthorized: true
-            }
-        })
-
-        await transport.sendMail({
+        const transporter = await transport()
+        await transporter.sendMail({
             from: `"VMeme Contemporary Art Gallery" <${process.env.EMAIL}>`,
             to: email,
             subject: 'One-Time Password',
             html: `
             <h1>Your OTP: ${otp}</h1>
-            `
+            `,
         })
     } catch (e) {
         console.log(e)
