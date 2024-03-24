@@ -14,7 +14,7 @@ export const generatePDFReceipt = async (user) => {
         await page.setContent(receiptPDFContent(user));
 
         // Generate PDF from the HTML content
-        const pdf = await page.pdf({ path: 'custom_report.pdf', format: 'A4', printBackground: true });
+        const pdf = await page.pdf({ format: 'A4', printBackground: true });
 
         // Close the browser
         await browser.close();
